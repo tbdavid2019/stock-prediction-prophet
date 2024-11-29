@@ -2,6 +2,10 @@ import gradio as gr
 import yfinance as yf
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+import matplotlib.font_manager as fm
+import tempfile
+import requests
 from prophet import Prophet
 from datetime import datetime, timedelta
 import logging
@@ -9,6 +13,23 @@ import logging
 # 設置日誌
 logging.basicConfig(level=logging.INFO,
                    format='%(asctime)s - %(levelname)s - %(message)s')
+
+# 字體設置
+def setup_font():
+    try:
+        url_font = "https://drive.google.com/uc?id=1eGAsTN1HBpJAkeVM57_C7ccp7hbgSz3_"
+        response_font = requests.get(url_font)
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.ttf') as tmp_file:
+            tmp_file.write(response_font.content)
+            tmp_file_path = tmp_file.name
+        
+        fm.fontManager.addfont(tmp_file_path)
+        mpl.rc('font', family='Taipei Sans TC Beta')
+    except Exception as e:
+        logging.error(f"字體設置失敗: {str(e)}")
+        # 使用備用字體
+        mpl.rc('font', family='SimHei')
 
 def predict_stock_price(stock_code, period, prediction_days):
     try:
@@ -67,12 +88,16 @@ def predict_stock_price(stock_code, period, prediction_days):
         logging.error(f"預測過程發生錯誤: {str(e)}")
         return f"預測過程發生錯誤: {str(e)}", None
 
+# 初始化字體
+setup_font()
+
 # Gradio 介面
 with gr.Blocks() as demo:
-    gr.Markdown("# 台股預測系統")
+    gr.Markdown("# 股票價格 Stock Price 預測系統 Prophet")
     
-    with gr.Row():
-        with gr.Column():
+    with gr.Column():
+        # 輸入區域
+        with gr.Row():
             stock_input = gr.Textbox(
                 label="股票代碼",
                 placeholder="例如: 2330.TW",
@@ -92,12 +117,12 @@ with gr.Blocks() as demo:
                 step=1,
                 label="預測天數"
             )
-            
-            predict_button = gr.Button("開始預測", variant="primary")
-            
-        with gr.Column():
-            output_plot = gr.Plot(label="股價預測圖")
-            output_text = gr.Textbox(label="預測結果")
+        
+        predict_button = gr.Button("開始預測", variant="primary")
+        
+        # 輸出區域（垂直排列）
+        output_plot = gr.Plot(label="股價預測圖")
+        output_text = gr.Textbox(label="預測結果", lines=10)
     
     predict_button.click(
         predict_stock_price,
